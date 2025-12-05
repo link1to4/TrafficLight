@@ -1,0 +1,7 @@
+{
+  "name": "Smart Crossroad Control",
+  "description": "A smart dashboard for managing and simulating multiple intersection traffic lights with GPS integration and interactive timing configuration.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
