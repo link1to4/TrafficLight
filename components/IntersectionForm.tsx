@@ -17,6 +17,8 @@ const IntersectionForm: React.FC<IntersectionFormProps> = ({ initialData, onSave
   // Basic Info State
   const [name, setName] = useState(initialData?.name || '');
   const [startTime, setStartTime] = useState(initialData?.startTime || formatTime(new Date()));
+  const [activeLoops, setActiveLoops] = useState(initialData?.activeLoops || 20); // Default to 20 loops
+  
   const [isLocating, setIsLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -133,6 +135,7 @@ const IntersectionForm: React.FC<IntersectionFormProps> = ({ initialData, onSave
     onSave({
       name,
       startTime,
+      activeLoops,
       timings: { green, yellow, red }
     });
   };
@@ -174,6 +177,9 @@ const IntersectionForm: React.FC<IntersectionFormProps> = ({ initialData, onSave
 
   // Extract parts for rendering inputs
   const [startH, startM, startS] = startTime.split(':').map(p => (parseInt(p) || 0).toString().padStart(2, '0'));
+
+  const totalCycle = green + yellow + red;
+  const estimatedActiveMinutes = Math.round((totalCycle * activeLoops) / 60);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 font-sans">
@@ -284,7 +290,30 @@ const IntersectionForm: React.FC<IntersectionFormProps> = ({ initialData, onSave
                      <span className="absolute right-1 bottom-1 text-[10px] text-slate-500">秒</span>
                   </div>
                 </div>
-                <p className="text-slate-500 text-xs">系統將於此時間的前後 30 分鐘內運作。</p>
+              </div>
+
+              {/* Active Loops Configuration */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-300">運作範圍 (前後週期數)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={activeLoops}
+                    onChange={(e) => setActiveLoops(Math.max(1, parseInt(e.target.value) || 0))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                  <span className="text-slate-400 text-sm whitespace-nowrap">個循環</span>
+                </div>
+                <div className="text-slate-500 text-xs mt-1 bg-slate-800/50 p-2 rounded">
+                  <p>1 個循環 = 綠({green}s) + 黃({yellow}s) + 紅({red}s) = <span className="text-blue-400 font-mono">{totalCycle}</span> 秒。</p>
+                  <p className="mt-1">
+                    系統將於啟動時間前後各 <span className="text-white font-bold">{activeLoops}</span> 個循環內運作。
+                    <br/>
+                    總運作時長約：±{estimatedActiveMinutes} 分鐘。
+                  </p>
+                </div>
               </div>
             </div>
           ) : (

@@ -8,6 +8,7 @@ export interface Intersection {
   id: string;
   name: string;
   startTime: string; // Format "HH:mm:ss"
+  activeLoops: number; // Configurable loops for active duration
   timings: TrafficLightTimings;
 }
 

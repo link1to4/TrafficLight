@@ -18,14 +18,23 @@ const IntersectionCard: React.FC<IntersectionCardProps> = ({
   onDelete,
 }) => {
   const { status, lightState } = useMemo(() => {
+    const { green, yellow, red } = data.timings;
+    const totalCycle = green + yellow + red;
+
+    // Determine Active Window based on activeLoops
+    // Default to 20 loops if not defined (backward compatibility)
+    const loops = data.activeLoops ?? 20; 
+    const activeWindowSeconds = totalCycle * loops;
+
     const nowSeconds = currentTime.getHours() * 3600 + currentTime.getMinutes() * 60 + currentTime.getSeconds();
     const startSeconds = getSecondsFromMidnight(data.startTime);
     
-    // Calculate difference handling day wrap-around implies strictly +/- 30 mins
+    // Calculate difference handling day wrap-around
     let diff = Math.abs(nowSeconds - startSeconds);
-    if (diff > 43200) diff = 86400 - diff; // Handle midnight wrap proximity
+    if (diff > 43200) diff = 86400 - diff; // Wrap check
 
-    const isActive = diff <= 1800; // 30 minutes = 1800 seconds
+    // Check if within the +/- loop window
+    const isActive = diff <= activeWindowSeconds;
     const derivedStatus: IntersectionStatus = isActive ? 'ACTIVE' : 'STANDBY';
 
     let currentLight: LightColor = 'OFF';
@@ -36,14 +45,25 @@ const IntersectionCard: React.FC<IntersectionCardProps> = ({
       currentLight = (Math.floor(nowSeconds) % 2 === 0) ? 'YELLOW' : 'OFF';
     } else {
       // Active Logic
-      const { green, yellow, red } = data.timings;
-      const totalCycle = green + yellow + red;
-      
       if (totalCycle > 0) {
         let elapsed = nowSeconds - startSeconds;
-        if (elapsed < 0) elapsed += 86400; // Wrap around day
+        // Normalize elapsed to be positive relative to start (handling wrap)
+        // Note: The cycle logic needs to be consistent. 
+        // We can just take modulo of totalCycle directly from raw time if aligned to start.
+        // Or cleaner: (now - start) % totalCycle. 
+        // If (now - start) is negative (e.g. 23:59 vs 00:01), we handle wrap.
         
-        const cyclePosition = elapsed % totalCycle;
+        let timeDiff = nowSeconds - startSeconds;
+        if (timeDiff < 0) timeDiff += 86400; // e.g. Start 23:50, Now 00:10 -> diff 20 mins
+        
+        // However, if we are "before" the start time but within active window (e.g. 09:55 for 10:00 start),
+        // the traffic light logic should probably still just follow the cycle offset from start time.
+        // A simple way is just `timeDiff % totalCycle`.
+        // But `timeDiff` calculated above assumes forward time. 
+        // If we are "before" (e.g. 09:55 for 10:00), timeDiff is large (23h 55m).
+        // (large_number) % cycle is fine.
+        
+        const cyclePosition = timeDiff % totalCycle;
 
         if (cyclePosition < green) {
           currentLight = 'GREEN';
@@ -77,7 +97,7 @@ const IntersectionCard: React.FC<IntersectionCardProps> = ({
           </h3>
           <div className="text-slate-400 text-xs mt-1 flex items-center gap-2 font-mono">
             <Clock size={12} />
-            <span>排程: {data.startTime} (±30分)</span>
+            <span>排程: {data.startTime} (±{data.activeLoops || 20}循環)</span>
           </div>
         </div>
         <div className={`px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
