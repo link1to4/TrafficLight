@@ -135,6 +135,7 @@ const App: React.FC = () => {
           name: item.name,
           startTime: item.startTime,
           activeLoops: typeof item.activeLoops === 'number' ? item.activeLoops : 20,
+          negativeLoops: typeof item.negativeLoops === 'number' ? item.negativeLoops : 0,
           timings: {
             green: item.timings.green,
             yellow: item.timings.yellow,
@@ -215,7 +216,7 @@ const App: React.FC = () => {
                 <button
                   onClick={handleExport}
                   className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-colors"
-                  title="匯出設定"
+                  title="匯出設定 (JSON)"
                 >
                   <Download size={18} />
                 </button>
@@ -271,7 +272,7 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Modal */}
+      {/* Modals */}
       {isModalOpen && (
         <IntersectionForm
           initialData={editingIntersection}

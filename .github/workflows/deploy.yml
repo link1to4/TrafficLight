@@ -22,9 +22,6 @@ concurrency:
 jobs:
   # 建置與部署工作
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 程式碼

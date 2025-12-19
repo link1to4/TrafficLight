@@ -21,20 +21,33 @@ const IntersectionCard: React.FC<IntersectionCardProps> = ({
     const { green, yellow, red } = data.timings;
     const totalCycle = green + yellow + red;
 
-    // Determine Active Window based on activeLoops
-    // Default to 20 loops if not defined (backward compatibility)
-    const loops = data.activeLoops ?? 20; 
-    const activeWindowSeconds = totalCycle * loops;
+    // Time ranges relative to Start Time (0 point)
+    const activeLoops = data.activeLoops ?? 20;
+    const negativeLoops = data.negativeLoops ?? 0;
+    
+    // Duration in seconds for "After Start" (Positive)
+    const posDuration = totalCycle * activeLoops;
+    // Duration in seconds for "Before Start" (Negative)
+    const negDuration = totalCycle * negativeLoops;
 
     const nowSeconds = currentTime.getHours() * 3600 + currentTime.getMinutes() * 60 + currentTime.getSeconds();
     const startSeconds = getSecondsFromMidnight(data.startTime);
     
-    // Calculate difference handling day wrap-around
-    let diff = Math.abs(nowSeconds - startSeconds);
-    if (diff > 43200) diff = 86400 - diff; // Wrap check
+    // Calculate raw difference in seconds
+    let diff = nowSeconds - startSeconds;
+    
+    // Normalize diff to handle day boundaries (wrap around)
+    // We want the 'logical' difference. 
+    // E.g. If Start is 23:50 and Now is 00:10, diff is -big. It should be +20 mins.
+    // E.g. If Start is 00:10 and Now is 23:50, diff is +big. It should be -20 mins.
+    // We define the "window" of validity roughly within +/- 12 hours for this check to work simply.
+    
+    if (diff < -43200) diff += 86400;
+    if (diff > 43200) diff -= 86400;
 
-    // Check if within the +/- loop window
-    const isActive = diff <= activeWindowSeconds;
+    // Check if within the [ -negDuration ... 0 ... +posDuration ] window
+    const isActive = diff >= -negDuration && diff <= posDuration;
+    
     const derivedStatus: IntersectionStatus = isActive ? 'ACTIVE' : 'STANDBY';
 
     let currentLight: LightColor = 'OFF';
@@ -46,24 +59,11 @@ const IntersectionCard: React.FC<IntersectionCardProps> = ({
     } else {
       // Active Logic
       if (totalCycle > 0) {
-        let elapsed = nowSeconds - startSeconds;
-        // Normalize elapsed to be positive relative to start (handling wrap)
-        // Note: The cycle logic needs to be consistent. 
-        // We can just take modulo of totalCycle directly from raw time if aligned to start.
-        // Or cleaner: (now - start) % totalCycle. 
-        // If (now - start) is negative (e.g. 23:59 vs 00:01), we handle wrap.
+        // We need the cycle position relative to the Start Time (which is effectively cycle start 0).
+        // Since diff can be negative (e.g., -50s), the modulo operator in JS returns negative (-50 % 100 = -50).
+        // We need positive modulo: ((n % m) + m) % m
         
-        let timeDiff = nowSeconds - startSeconds;
-        if (timeDiff < 0) timeDiff += 86400; // e.g. Start 23:50, Now 00:10 -> diff 20 mins
-        
-        // However, if we are "before" the start time but within active window (e.g. 09:55 for 10:00 start),
-        // the traffic light logic should probably still just follow the cycle offset from start time.
-        // A simple way is just `timeDiff % totalCycle`.
-        // But `timeDiff` calculated above assumes forward time. 
-        // If we are "before" (e.g. 09:55 for 10:00), timeDiff is large (23h 55m).
-        // (large_number) % cycle is fine.
-        
-        const cyclePosition = timeDiff % totalCycle;
+        const cyclePosition = ((diff % totalCycle) + totalCycle) % totalCycle;
 
         if (cyclePosition < green) {
           currentLight = 'GREEN';
@@ -97,7 +97,11 @@ const IntersectionCard: React.FC<IntersectionCardProps> = ({
           </h3>
           <div className="text-slate-400 text-xs mt-1 flex items-center gap-2 font-mono">
             <Clock size={12} />
-            <span>排程: {data.startTime} (±{data.activeLoops || 20}循環)</span>
+            <span>
+                {data.startTime} 
+                <span className="text-slate-500 mx-1">|</span>
+                -{data.negativeLoops || 0}/+{data.activeLoops || 20} 循環
+            </span>
           </div>
         </div>
         <div className={`px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${

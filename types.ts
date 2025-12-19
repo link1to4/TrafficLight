@@ -8,7 +8,8 @@ export interface Intersection {
   id: string;
   name: string;
   startTime: string; // Format "HH:mm:ss"
-  activeLoops: number; // Configurable loops for active duration
+  activeLoops: number; // Loops AFTER start time
+  negativeLoops?: number; // Loops BEFORE start time
   timings: TrafficLightTimings;
 }
 
@@ -28,4 +29,12 @@ export enum RecordingState {
   RECORDING_YELLOW = 'RECORDING_YELLOW',
   RECORDING_RED = 'RECORDING_RED',
   FINISHED = 'FINISHED'
+}
+
+export interface GitHubSettings {
+  token: string;
+  owner: string;
+  repo: string;
+  path: string;
+  branch: string;
 }
